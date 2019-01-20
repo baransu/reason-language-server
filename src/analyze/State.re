@@ -109,10 +109,13 @@ let runBuildCommand = (~reportDiagnostics, state, root, buildCommand) => {
   /* TODO report notifications here */
 };
 
+
+let ppxQuote = ppx => "'" ++ ppx ++ "'";
+
 let escapePpxFlag = flag => {
   let parts = Utils.split_on_char(' ', flag);
   switch(parts) {
-    | ["-ppx", ...ppx] => "-ppx " ++ (String.concat(" ", ppx) |> Filename.quote)
+    | ["-ppx", ...ppx] => "-ppx " ++ (String.concat(" ", ppx) |> ppxQuote)
     | _ => flag
   }
 };
@@ -208,7 +211,7 @@ let newBsPackage = (~overrideBuildSystem=?, ~reportDiagnostics, state, rootPath)
       let ppxs = config |> Json.get("ppx-flags") |?> Json.array |?>> Utils.filterMap(Json.string) |? [];
       Log.log("Getting hte ppxs yall");
       let flags = flags @ (Belt.List.map(ppxs, name => {
-        MerlinFile.fixPpx("-ppx " ++ name, rootPath)
+        MerlinFile.fixPpx("-ppx " ++ ppxQuote(name), rootPath)
       }));
       let flags = switch (config |> Json.get("warnings") |?> Json.get("number") |?> Json.string) {
         | None => flags
@@ -218,7 +221,7 @@ let newBsPackage = (~overrideBuildSystem=?, ~reportDiagnostics, state, rootPath)
         "-ppx " ++ bsPlatform /+ "lib" /+ "bsppx.exe"
       ], opens)
     | _ => {
-      let flags = MerlinFile.getFlags(rootPath) |> RResult.withDefault([""]); /*|> List.map(escapePpxFlag)*/
+      let flags = MerlinFile.getFlags(rootPath) |> RResult.withDefault([""]) |> List.map(escapePpxFlag);
       let opens = List.fold_left((opens, item) => {
         let parts = Utils.split_on_char(' ', item);
         let rec loop = items => switch items {
